@@ -84,6 +84,28 @@ let available_moves
   Set.to_list avail_pos
 ;;
 
+let find_rows 
+~(game_kind : Game_kind.t)
+: Position.t list list
+=
+let rows = list
+
+let find_cols 
+~(game_kind : Game_kind.t)
+: Position.t list list
+=
+
+let evaluate_seq 
+~(seq: Position.t list)
+~(game_kind : Game_kind.t)
+~(pieces : Piece.t Position.Map.t)
+: bool
+=
+
+
+
+
+;;
 (* Exercise 2.
 
    For instructions on implemeting this refer to the README.
@@ -93,6 +115,7 @@ let available_moves
 let evaluate ~(game_kind : Game_kind.t) ~(pieces : Piece.t Position.Map.t)
   : Evaluation.t
   =
+  
   ignore pieces;
   ignore game_kind;
   failwith "Implement me!"

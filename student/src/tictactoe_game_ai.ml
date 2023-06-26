@@ -17,11 +17,11 @@ let random_move_strategy
   let avail_moves =
     Tic_tac_toe_exercises_lib.available_moves ~game_kind ~pieces
   in
-  (if List.length avail_moves = 0
+  if List.length avail_moves = 0
   then failwith "no more choices"
   else (
     let choice = List.random_element_exn avail_moves in
-    choice))
+    choice)
 ;;
 
 (* Exercise 3.2.
@@ -94,8 +94,8 @@ let _ = score
 let compute_next_move ~(me : Piece.t) ~(game_state : Game_state.t)
   : Position.t
   =
-  ignore random_move_strategy;
   ignore me;
-  ignore game_state;
-  { Position.row = 0; column = 0 }
+  random_move_strategy
+    ~game_kind:game_state.game_kind
+    ~pieces:game_state.pieces
 ;;
