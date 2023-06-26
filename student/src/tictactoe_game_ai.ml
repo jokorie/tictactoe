@@ -14,9 +14,14 @@ let random_move_strategy
   ~(pieces : Piece.t Position.Map.t)
   : Position.t
   =
-  ignore game_kind;
-  ignore pieces;
-  failwith "Implement me!"
+  let avail_moves =
+    Tic_tac_toe_exercises_lib.available_moves ~game_kind ~pieces
+  in
+  (if List.length avail_moves = 0
+  then failwith "no more choices"
+  else (
+    let choice = List.random_element_exn avail_moves in
+    choice))
 ;;
 
 (* Exercise 3.2.
