@@ -5,6 +5,7 @@ open Protocol
 (** This file contains exercises 1-4. For instructions refer to the README at
     the root of this repository. *)
 
+
 (** Finds all available/empty slots in a tic tac toe/omok game. *)
 val available_moves
   :  game_kind:Game_kind.t

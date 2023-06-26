@@ -55,6 +55,17 @@ let non_win =
   |> place_piece ~piece:Piece.O ~position:{ Position.row = 2; column = 0 }
 ;;
 
+let all_slots ~(game_kind : Game_kind.t) =
+  let length = Protocol.Game_kind.board_length game_kind in
+  let all_coords =
+    List.init length ~f:(fun x ->
+      List.init length ~f:(fun y -> { Position.row = x; column = y }))
+  in
+  let concat_coords = List.concat all_coords in
+  let set_all_coords = Position.Set.of_list concat_coords in
+  set_all_coords
+;;
+
 (* Exercise 1.
 
    For instructions on implemeting this refer to the README.
@@ -66,9 +77,11 @@ let available_moves
   ~(pieces : Piece.t Position.Map.t)
   : Position.t list
   =
-  ignore game_kind;
-  ignore pieces;
-  failwith "Implement me!"
+  let keys = Map.keys pieces in
+  let set_of_keys = Position.Set.of_list keys in
+  let all_slots = all_slots ~game_kind in
+  let avail_pos = Set.diff all_slots set_of_keys in
+  Set.to_list avail_pos
 ;;
 
 (* Exercise 2.
