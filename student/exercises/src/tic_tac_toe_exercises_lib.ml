@@ -32,7 +32,7 @@ let empty_game =
 let down { Position.row; column } = { Position.row = row + 1; column }
 let right { Position.row; column } = { Position.row; column = column + 1 }
 let up { Position.row; column } = { Position.row = row - 1; column }
-let left { Position.row; column } = { Position.row; column = column - 1 }
+let _left { Position.row; column } = { Position.row; column = column - 1 }
 
 let place_piece (game : Game_state.t) ~piece ~position : Game_state.t =
   let pieces = Map.set game.pieces ~key:position ~data:piece in
@@ -90,7 +90,9 @@ let available_moves
 ;;
 
 let is_valid_coord ~(coord : Position.t) =
-  coord.row >= 0 && coord.column >= 0 && coord.column <= 2 && coord.row <= 2
+  (* coord.row >= 0 && coord.column >= 0 && coord.column <= 2 && coord.row <=
+     2 *)
+  Position.in_bounds coord ~game_kind:Game_kind.Tic_tac_toe
 ;;
 
 let rec build_direction ~step_dir ~eval_dir ~(pos : Position.t) =
@@ -112,68 +114,80 @@ let rec generic_search_helper ~step_dir ~eval_dir ~(pos : Position.t)
   else []
 ;;
 
-let evaluate_seq ~(seq : Position.t list) ?(game_kind = 0) ?(pieces = 0)
+let evaluate_seq
+  ~(seq : Position.t list)
+  ~(player : Piece.t)
+  ~(pieces : Piece.t Position.Map.t)
   : bool
   =
-  ignore pieces;
-  ignore game_kind;
-  (* let piece = List.hd seq in *)
-  let winning_state =
-    List.for_all seq ~f:(fun x ->
-      let new_piece = List.hd_exn seq in
-      Position.equal x new_piece)
-  in
-  winning_state
+  List.for_all seq ~f:(fun pos ->
+    let piece = Map.find pieces pos in
+    match piece with None -> false | Some p -> Piece.equal p player)
 ;;
 
-let generic_search ~step_dir ~eval_dir ~(pos : Position.t) =
-  List.exists (generic_search_helper ~step_dir ~eval_dir ~pos) ~f:(fun seq ->
-    evaluate_seq ~seq)
+let generic_search ~step_dir ~eval_dir ~(pos : Position.t) ~player ~pieces =
+  List.exists
+    (List.filter
+       (generic_search_helper ~step_dir ~eval_dir ~pos)
+       ~f:(fun list_seq -> List.length list_seq = 3))
+    ~f:(fun seq -> evaluate_seq ~seq ~player ~pieces)
 ;;
 
-let eval_rows () =
+let eval_rows ~player ~pieces =
   generic_search
     ~step_dir:down
     ~eval_dir:right
     ~pos:{ Position.row = 0; column = 0 }
+    ~player
+    ~pieces
 ;;
 
-let eval_cols () =
+let eval_cols ~player ~pieces =
   generic_search
     ~step_dir:right
     ~eval_dir:down
     ~pos:{ Position.row = 0; column = 0 }
+    ~player
+    ~pieces
 ;;
 
-let eval_diagonal () =
-  let tl_diagonal =
+let eval_diagonal ~player ~pieces =
+  let tl_diagonal () =
     generic_search
       ~step_dir:down
       ~eval_dir:(fun x -> x |> up |> right)
       ~pos:{ Position.row = 0; column = 0 }
+      ~player
+      ~pieces
   in
-  let br_diagonal =
+  let br_diagonal () =
     generic_search
       ~step_dir:right
       ~eval_dir:(fun x -> x |> up |> right)
       ~pos:{ Position.row = 2; column = 0 }
+      ~player
+      ~pieces
   in
-  let tr_diagonal =
+  let tr_diagonal () =
     generic_search
       ~step_dir:right
       ~eval_dir:(fun x -> x |> down |> right)
       ~pos:{ Position.row = 0; column = 0 }
+      ~player
+      ~pieces
   in
-  let bl_diagonal =
+  let bl_diagonal () =
     generic_search
       ~step_dir:down
       ~eval_dir:(fun x -> x |> down |> right)
       ~pos:{ Position.row = 0; column = 0 }
+      ~player
+      ~pieces
   in
-  let all_diagonals =
-    tl_diagonal || br_diagonal || tr_diagonal || bl_diagonal
+  let all_diagonals () =
+    tl_diagonal () || br_diagonal () || tr_diagonal () || bl_diagonal ()
   in
-  all_diagonals
+  all_diagonals ()
 ;;
 
 (* let find_cols ~(game_kind : Game_kind.t) : Position.t list list = ;; *)
@@ -189,10 +203,21 @@ let evaluate ~(game_kind : Game_kind.t) ~(pieces : Piece.t Position.Map.t)
   =
   ignore pieces;
   ignore game_kind;
-  let won = eval_rows () || eval_cols () || eval_diagonal () in
-  match won with
-  | true -> Evaluation.Game_over { winner = Some X }
-  | false -> Evaluation.Game_continues
+  let x_won =
+    eval_rows ~player:Piece.X ~pieces
+    || eval_cols ~player:Piece.X ~pieces
+    || eval_diagonal ~player:Piece.X ~pieces
+  in
+  let o_won =
+    eval_rows ~player:Piece.O ~pieces
+    || eval_cols ~player:Piece.O ~pieces
+    || eval_diagonal ~player:Piece.O ~pieces
+  in
+  match x_won, o_won with
+  | true, true -> Evaluation.Illegal_state
+  | true, false -> Evaluation.Game_over { winner = Some X }
+  | false, true -> Evaluation.Game_over { winner = Some O }
+  | false, false -> Evaluation.Game_continues
 ;;
 
 (* let%expect_test "generic_search" = *)
@@ -333,13 +358,20 @@ let%expect_test "print_non_win" =
 
 (* When you've implemented the [evaluate] function, uncomment the next two
    tests! *)
-(* let%expect_test "evalulate_win_for_x" = print_endline (evaluate
-   ~game_kind:win_for_x.game_kind ~pieces:win_for_x.pieces |>
-   Evaluation.to_string); [%expect {| (Win (X)) |}] ;;
+let%expect_test "evalulate_win_for_x" =
+  (* print_endline (Game_state.to_string_hum win_for_x); *)
+  print_endline
+    (evaluate ~game_kind:win_for_x.game_kind ~pieces:win_for_x.pieces
+     |> Evaluation.to_string);
+  [%expect {| (Game_over(winner(X))) |}]
+;;
 
-   let%expect_test "evalulate_non_win" = print_endline (evaluate
-   ~game_kind:non_win.game_kind ~pieces:non_win.pieces |>
-   Evaluation.to_string); [%expect {| Game_continues |}] ;; *)
+let%expect_test "evalulate_non_win" =
+  print_endline
+    (evaluate ~game_kind:non_win.game_kind ~pieces:non_win.pieces
+     |> Evaluation.to_string);
+  [%expect {| Game_continues |}]
+;;
 
 (* When you've implemented the [winning_moves] function, uncomment this
    test! *)
