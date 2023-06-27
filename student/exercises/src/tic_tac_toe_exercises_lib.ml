@@ -229,10 +229,13 @@ let winning_moves
   ~(pieces : Piece.t Position.Map.t)
   : Position.t list
   =
-  ignore me;
-  ignore game_kind;
-  ignore pieces;
-  failwith "Implement me!"
+  let all_moves = available_moves ~game_kind ~pieces in 
+  let move_wins move = match (evaluate ~game_kind ~pieces:(Map.set pieces ~key:move ~data:me)) with 
+  | Evaluation.Game_Over { winner = Some me} -> true
+  | _ -> false;
+
+  let won_moves = List.filter all_moves ~f:move_wins in
+  won_moves
 ;;
 
 (* Exercise 4. *)
