@@ -29,6 +29,11 @@ let empty_game =
   }
 ;;
 
+let down { Position.row; column } = { Position.row = row + 1; column }
+let right { Position.row; column } = { Position.row; column = column + 1 }
+let up { Position.row; column } = { Position.row = row - 1; column }
+let left { Position.row; column } = { Position.row; column = column - 1 }
+
 let place_piece (game : Game_state.t) ~piece ~position : Game_state.t =
   let pieces = Map.set game.pieces ~key:position ~data:piece in
   { game with pieces }
@@ -84,28 +89,95 @@ let available_moves
   Set.to_list avail_pos
 ;;
 
-let find_rows 
-~(game_kind : Game_kind.t)
-: Position.t list list
-=
-let rows = list
-
-let find_cols 
-~(game_kind : Game_kind.t)
-: Position.t list list
-=
-
-let evaluate_seq 
-~(seq: Position.t list)
-~(game_kind : Game_kind.t)
-~(pieces : Piece.t Position.Map.t)
-: bool
-=
-
-
-
-
+let is_valid_coord ~(coord : Position.t) =
+  coord.row >= 0 && coord.column >= 0 && coord.column <= 2 && coord.row <= 2
 ;;
+
+let rec build_direction ~step_dir ~eval_dir ~(pos : Position.t) =
+  if is_valid_coord ~coord:pos
+  then [ pos ] @ build_direction ~step_dir ~eval_dir ~pos:(eval_dir pos)
+  else []
+;;
+
+let rec generic_search_helper ~step_dir ~eval_dir ~(pos : Position.t)
+  : Position.t list list
+  =
+  if is_valid_coord ~coord:pos
+  then (
+    let sequences =
+      [ build_direction ~step_dir ~eval_dir ~pos ]
+      @ generic_search_helper ~step_dir ~eval_dir ~pos:(step_dir pos)
+    in
+    sequences)
+  else []
+;;
+
+let evaluate_seq ~(seq : Position.t list) ?(game_kind = 0) ?(pieces = 0)
+  : bool
+  =
+  ignore pieces;
+  ignore game_kind;
+  (* let piece = List.hd seq in *)
+  let winning_state =
+    List.for_all seq ~f:(fun x ->
+      let new_piece = List.hd_exn seq in
+      Position.equal x new_piece)
+  in
+  winning_state
+;;
+
+let generic_search ~step_dir ~eval_dir ~(pos : Position.t) =
+  List.exists (generic_search_helper ~step_dir ~eval_dir ~pos) ~f:(fun seq ->
+    evaluate_seq ~seq)
+;;
+
+let eval_rows () =
+  generic_search
+    ~step_dir:down
+    ~eval_dir:right
+    ~pos:{ Position.row = 0; column = 0 }
+;;
+
+let eval_cols () =
+  generic_search
+    ~step_dir:right
+    ~eval_dir:down
+    ~pos:{ Position.row = 0; column = 0 }
+;;
+
+let eval_diagonal () =
+  let tl_diagonal =
+    generic_search
+      ~step_dir:down
+      ~eval_dir:(fun x -> x |> up |> right)
+      ~pos:{ Position.row = 0; column = 0 }
+  in
+  let br_diagonal =
+    generic_search
+      ~step_dir:right
+      ~eval_dir:(fun x -> x |> up |> right)
+      ~pos:{ Position.row = 2; column = 0 }
+  in
+  let tr_diagonal =
+    generic_search
+      ~step_dir:right
+      ~eval_dir:(fun x -> x |> down |> right)
+      ~pos:{ Position.row = 0; column = 0 }
+  in
+  let bl_diagonal =
+    generic_search
+      ~step_dir:down
+      ~eval_dir:(fun x -> x |> down |> right)
+      ~pos:{ Position.row = 0; column = 0 }
+  in
+  let all_diagonals =
+    tl_diagonal || br_diagonal || tr_diagonal || bl_diagonal
+  in
+  all_diagonals
+;;
+
+(* let find_cols ~(game_kind : Game_kind.t) : Position.t list list = ;; *)
+
 (* Exercise 2.
 
    For instructions on implemeting this refer to the README.
@@ -115,11 +187,15 @@ let evaluate_seq
 let evaluate ~(game_kind : Game_kind.t) ~(pieces : Piece.t Position.Map.t)
   : Evaluation.t
   =
-  
   ignore pieces;
   ignore game_kind;
-  failwith "Implement me!"
+  let won = eval_rows () || eval_cols () || eval_diagonal () in
+  match won with
+  | true -> Evaluation.Game_over { winner = Some X }
+  | false -> Evaluation.Game_continues
 ;;
+
+(* let%expect_test "generic_search" = *)
 
 (* Exercise 3. *)
 let winning_moves
