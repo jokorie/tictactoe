@@ -217,7 +217,11 @@ let evaluate ~(game_kind : Game_kind.t) ~(pieces : Piece.t Position.Map.t)
   | true, true -> Evaluation.Illegal_state
   | true, false -> Evaluation.Game_over { winner = Some X }
   | false, true -> Evaluation.Game_over { winner = Some O }
-  | false, false -> Evaluation.Game_continues
+  | false, false ->
+    if Map.length pieces
+       < Game_kind.board_length game_kind * Game_kind.board_length game_kind
+    then Evaluation.Game_continues
+    else Evaluation.Game_over { winner = None }
 ;;
 
 (* Exercise 3. *)
@@ -232,7 +236,7 @@ let winning_moves
     match
       evaluate ~game_kind ~pieces:(Map.set pieces ~key:move ~data:me)
     with
-    | Game_over { winner = Some me } -> true
+    | Game_over { winner = Some _ } -> true
     | _ -> false
   in
   let won_moves = List.filter all_moves ~f:move_wins in
@@ -246,10 +250,8 @@ let losing_moves
   ~(pieces : Piece.t Position.Map.t)
   : Position.t list
   =
-  ignore me;
-  ignore game_kind;
-  ignore pieces;
-  failwith "Implement me!"
+  let opp_piece = Piece.flip me in
+  winning_moves ~me:opp_piece ~game_kind ~pieces
 ;;
 
 let exercise_one =
