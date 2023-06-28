@@ -87,9 +87,12 @@ let score
   : float
   =
   ignore me;
-  ignore game_kind;
-  ignore pieces;
-  0.0
+  let score = Tic_tac_toe_exercises_lib.evaluate ~game_kind ~pieces in
+  match score with
+  | Game_over {winner = Some X} -> Float.infinity
+  | Game_over {winner = Some O} -> Float.neg_infinity
+  | _ -> 0.0
+
 ;;
 
 let _ = score
@@ -106,7 +109,7 @@ let _ = score
 let compute_next_move ~(me : Piece.t) ~(game_state : Game_state.t)
   : Position.t
   =
-  pick_winning_move_or_block_if_possible_strategy
+  pick_winning_move_if_possible_strategy
     ~me
     ~game_kind:game_state.game_kind
     ~pieces:game_state.pieces
