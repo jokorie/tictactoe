@@ -2,50 +2,28 @@ open! Core
 open Tic_tac_toe_2023_common
 open Protocol
 
-(* Added *)
-let empty_game =
-  let game_id = Game_id.of_int 0 in
-  let game_kind = Game_kind.Tic_tac_toe in
-  let player_x = Player.Player (Username.of_string "Player_X") in
-  let player_o = Player.Player (Username.of_string "Player_O") in
-  let game_status = Game_status.Turn_of Piece.X in
-  { Game_state.game_id
-  ; game_kind
-  ; player_x
-  ; player_o
-  ; pieces = Position.Map.empty
-  ; game_status
-  }
-;;
+(* Added let empty_game = let game_id = Game_id.of_int 0 in let game_kind =
+   Game_kind.Tic_tac_toe in let player_x = Player.Player (Username.of_string
+   "Player_X") in let player_o = Player.Player (Username.of_string
+   "Player_O") in let game_status = Game_status.Turn_of Piece.X in {
+   Game_state.game_id ; game_kind ; player_x ; player_o ; pieces =
+   Position.Map.empty ; game_status } ;;
 
-let to_string_hum ~pieces =
-  let board_length = 3 in
-  let rows =
-    List.init board_length ~f:(fun row ->
-      List.init board_length ~f:(fun column ->
-        let position = { Position.row; column } in
-        match Map.find pieces position with
-        | None -> " "
-        | Some (X : Piece.t) -> "X"
-        | Some O -> "O")
-      |> String.concat)
-    |> String.concat_lines
-  in
-  rows
-;;
+   let to_string_hum ~pieces = let board_length = 3 in let rows = List.init
+   board_length ~f:(fun row -> List.init board_length ~f:(fun column -> let
+   position = { Position.row; column } in match Map.find pieces position with
+   | None -> " " | Some (X : Piece.t) -> "X" | Some O -> "O") |>
+   String.concat) |> String.concat_lines in rows ;;
 
-let place_piece (game : Game_state.t) ~piece ~position : Game_state.t =
-  let pieces = Map.set game.pieces ~key:position ~data:piece in
-  { game with pieces }
-;;
+   let place_piece (game : Game_state.t) ~piece ~position : Game_state.t =
+   let pieces = Map.set game.pieces ~key:position ~data:piece in { game with
+   pieces } ;;
 
-let non_win =
-  empty_game
-  |> place_piece ~piece:Piece.X ~position:{ Position.row = 0; column = 0 }
-  |> place_piece ~piece:Piece.O ~position:{ Position.row = 1; column = 0 }
-  |> place_piece ~piece:Piece.X ~position:{ Position.row = 2; column = 2 }
-  |> place_piece ~piece:Piece.O ~position:{ Position.row = 2; column = 0 }
-;;
+   let non_win = empty_game |> place_piece ~piece:Piece.X ~position:{
+   Position.row = 0; column = 0 } |> place_piece ~piece:Piece.O ~position:{
+   Position.row = 1; column = 0 } |> place_piece ~piece:Piece.X ~position:{
+   Position.row = 2; column = 2 } |> place_piece ~piece:Piece.O ~position:{
+   Position.row = 2; column = 0 } ;; *)
 
 (* Exercise 1.2.
 
@@ -120,8 +98,10 @@ let rec minimax_helper
   ~(pieces : Piece.t Position.Map.t)
   : float
   =
-  print_s [%message (depth : int) (to_string_hum ~pieces)];
-  print_s [%message ((Tic_tac_toe_exercises_lib.evaluate ~game_kind ~pieces):Game_)]
+  (* print_s [%message (depth : int) (to_string_hum ~pieces)]; let eval =
+     Tic_tac_toe_exercises_lib.Evaluation.to_string
+     (Tic_tac_toe_exercises_lib.evaluate ~game_kind ~pieces) in print_s
+     [%message eval]; print_s [%message "----------------------"]; *)
   let all_moves =
     Tic_tac_toe_exercises_lib.available_moves ~game_kind ~pieces
   in
@@ -174,19 +154,12 @@ let minimax
     Tic_tac_toe_exercises_lib.available_moves ~game_kind ~pieces
   in
   (* print_s [%message (all_moves : Position.t list)]; *)
-  let move_evals =
-    List.map all_moves ~f:(fun next_pos ->
-      let next_pos_eval =
-        minimax_helper
-          ~depth:6
-          ~me
-          ~game_kind
-          ~pieces:(Map.set pieces ~key:next_pos ~data:me)
-      in
-      next_pos, next_pos_eval)
-  in
-  print_s [%message (move_evals : (Position.t * float) list)];
-  let _best_score, best_pos =
+  (* let move_evals = List.map all_moves ~f:(fun next_pos -> let
+     next_pos_eval = minimax_helper ~depth:6 ~me:(Piece.flip me) ~game_kind
+     ~pieces:(Map.set pieces ~key:next_pos ~data:me) in next_pos,
+     next_pos_eval) in *)
+  (* print_s [%message (move_evals : (Position.t * float) list)]; *)
+  let best_score, best_pos =
     List.fold
       all_moves
       ~init:(0., None)
@@ -194,7 +167,7 @@ let minimax
       let next_pos_eval =
         minimax_helper
           ~depth:6
-          ~me
+          ~me:(Piece.flip me)
           ~game_kind
           ~pieces:(Map.set pieces ~key:next_pos ~data:me)
       in
@@ -202,8 +175,7 @@ let minimax
       then next_pos_eval, Some next_pos
       else curr_eval, curr_pos)
   in
-  (* print_s [%message (best_score : float) (best_pos : Position.t
-     option)]; *)
+  print_s [%message (best_score : float) (best_pos : Position.t option)];
   best_pos
 ;;
 
@@ -274,16 +246,10 @@ let compute_next_move ~(me : Piece.t) ~(game_state : Game_state.t)
 
 (* When you've implemented the [winning_moves] function, uncomment this
    test! *)
-let%expect_test "stupid_minimax" =
-  let best_move =
-    pick_winning_move_or_block_if_possible_strategy
-      ~me:Piece.X
-      ~game_kind:non_win.game_kind
-      ~pieces:non_win.pieces
-  in
-  print_s [%sexp (best_move : Position.t)];
-  [%expect {| ((row 1) (column 1)) |}]
-;;
+(* let%expect_test "stupid_minimax" = let best_move =
+   pick_winning_move_or_block_if_possible_strategy ~me:Piece.X
+   ~game_kind:non_win.game_kind ~pieces:non_win.pieces in print_s [%sexp
+   (best_move : Position.t)]; [%expect {| ((row 1) (column 1)) |}] ;; *)
 (* let positions = winning_moves ~game_kind:non_win.game_kind
    ~pieces:non_win.pieces ~me:Piece.O in print_s [%sexp (positions :
    Position.t list)]; [%expect {| () |}] *)
