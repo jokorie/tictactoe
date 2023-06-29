@@ -118,40 +118,58 @@ let evaluate_seq
   ~(seq : Position.t list)
   ~(player : Piece.t)
   ~(pieces : Piece.t Position.Map.t)
+  ~(game_kind : Game_kind.t)
   : bool
   =
-  List.for_all seq ~f:(fun pos ->
-    let piece = Map.find pieces pos in
-    match piece with None -> false | Some p -> Piece.equal p player)
+  (* List.for_all seq ~f:(fun pos -> let piece = Map.find pieces pos in match
+     piece with None -> false | Some p -> Piece.equal p player) *)
+  let threshold = Game_kind.win_length game_kind in
+  let longest_valid_seq =
+    List.fold seq ~init:0 ~f:(fun winning_length pos ->
+      if winning_length >= threshold
+      then winning_length
+      else (
+        let piece = Map.find pieces pos in
+        match piece with
+        | None -> 0
+        | Some p -> if Piece.equal player p then winning_length + 1 else 0))
+  in
+  if longest_valid_seq >= threshold then true else false
 ;;
 
-let generic_search ~step_dir ~eval_dir ~(pos : Position.t) ~player ~pieces =
-  List.exists
-    (List.filter
-       (generic_search_helper ~step_dir ~eval_dir ~pos)
-       ~f:(fun list_seq -> List.length list_seq = 3))
-    ~f:(fun seq -> evaluate_seq ~seq ~player ~pieces)
+let generic_search
+  ~step_dir
+  ~eval_dir
+  ~(pos : Position.t)
+  ~player
+  ~pieces
+  ~game_kind
+  =
+  List.exists (generic_search_helper ~step_dir ~eval_dir ~pos) ~f:(fun seq ->
+    evaluate_seq ~seq ~player ~pieces ~game_kind)
 ;;
 
-let eval_rows ~player ~pieces =
+let eval_rows ~player ~pieces ~game_kind=
   generic_search
     ~step_dir:down
     ~eval_dir:right
     ~pos:{ Position.row = 0; column = 0 }
     ~player
     ~pieces
+    ~game_kind
 ;;
 
-let eval_cols ~player ~pieces =
+let eval_cols ~player ~pieces ~game_kind=
   generic_search
     ~step_dir:right
     ~eval_dir:down
     ~pos:{ Position.row = 0; column = 0 }
     ~player
     ~pieces
+    ~game_kind
 ;;
 
-let eval_diagonal ~player ~pieces =
+let eval_diagonal ~player ~pieces ~game_kind=
   let tl_diagonal () =
     generic_search
       ~step_dir:down
@@ -159,6 +177,7 @@ let eval_diagonal ~player ~pieces =
       ~pos:{ Position.row = 0; column = 0 }
       ~player
       ~pieces
+      ~game_kind
   in
   let br_diagonal () =
     generic_search
@@ -167,6 +186,7 @@ let eval_diagonal ~player ~pieces =
       ~pos:{ Position.row = 2; column = 0 }
       ~player
       ~pieces
+      ~game_kind
   in
   let tr_diagonal () =
     generic_search
@@ -175,6 +195,7 @@ let eval_diagonal ~player ~pieces =
       ~pos:{ Position.row = 0; column = 0 }
       ~player
       ~pieces
+      ~game_kind
   in
   let bl_diagonal () =
     generic_search
@@ -183,6 +204,7 @@ let eval_diagonal ~player ~pieces =
       ~pos:{ Position.row = 0; column = 0 }
       ~player
       ~pieces
+      ~game_kind
   in
   let all_diagonals () =
     tl_diagonal () || br_diagonal () || tr_diagonal () || bl_diagonal ()
@@ -202,14 +224,14 @@ let evaluate ~(game_kind : Game_kind.t) ~(pieces : Piece.t Position.Map.t)
   : Evaluation.t
   =
   let x_won =
-    eval_rows ~player:Piece.X ~pieces
-    || eval_cols ~player:Piece.X ~pieces
-    || eval_diagonal ~player:Piece.X ~pieces
+    eval_rows ~player:Piece.X ~pieces ~game_kind
+    || eval_cols ~player:Piece.X ~pieces ~game_kind
+    || eval_diagonal ~player:Piece.X ~pieces ~game_kind
   in
   let o_won =
-    eval_rows ~player:Piece.O ~pieces
-    || eval_cols ~player:Piece.O ~pieces
-    || eval_diagonal ~player:Piece.O ~pieces
+    eval_rows ~player:Piece.O ~pieces ~game_kind
+    || eval_cols ~player:Piece.O ~pieces ~game_kind
+    || eval_diagonal ~player:Piece.O ~pieces ~game_kind
   in
   match x_won, o_won with
   | true, true -> Evaluation.Illegal_state
