@@ -106,7 +106,8 @@ let rec minimax_helper
     Tic_tac_toe_exercises_lib.available_moves ~game_kind ~pieces
   in
   let curr_board_eval = score ~game_kind ~pieces in
-  if (not (Float.equal curr_board_eval 0.0))
+  if Float.equal curr_board_eval Float.infinity
+     || Float.equal curr_board_eval Float.neg_infinity
      || depth = 0
      || List.length all_moves = 0
   then curr_board_eval
@@ -185,23 +186,37 @@ let pick_winning_move_or_block_if_possible_strategy
   ~(pieces : Piece.t Position.Map.t)
   : Position.t
   =
-  (* let w_moves = Tic_tac_toe_exercises_lib.winning_moves ~me ~game_kind
-     ~pieces in (* print_s [%message (w_moves : Position.t list)]; *) if
-     List.length w_moves > 0 then ( let move = List.random_element_exn
-     w_moves in print_s [%message "winning" (move : Position.t)]; move) else
-     ( let l_moves = Tic_tac_toe_exercises_lib.losing_moves ~me ~game_kind
-     ~pieces in if List.length l_moves > 0 then ( let move =
-     List.random_element_exn l_moves in print_s [%message "blocking" (move :
-     Position.t)]; move) else ( let best_move = minimax ~me ~game_kind
-     ~pieces in match best_move with | Some pos -> print_s [%message
-     "minimax" (pos : Position.t)]; pos | None -> { Position.row = 6; column
-     = 9 })) *)
-  let best_move = minimax ~me ~game_kind ~pieces in
-  match best_move with
-  | Some pos ->
-    (* print_s [%message "minimax" (pos : Position.t)]; *)
-    pos
-  | None -> { Position.row = 6; column = 9 }
+  if Map.length pieces = 0
+  then
+    if Game_kind.equal game_kind Game_kind.Tic_tac_toe
+    then { Position.row = 2; column = 2 }
+    else { Position.row = 7; column = 7 }
+  else (
+    let w_moves =
+      Tic_tac_toe_exercises_lib.winning_moves ~me ~game_kind ~pieces
+    in
+    (* print_s [%message (w_moves : Position.t list)]; *)
+    if List.length w_moves > 0
+    then (
+      let move = List.random_element_exn w_moves in
+      print_s [%message "winning" (move : Position.t)];
+      move)
+    else (
+      let l_moves =
+        Tic_tac_toe_exercises_lib.losing_moves ~me ~game_kind ~pieces
+      in
+      if List.length l_moves > 0
+      then (
+        let move = List.random_element_exn l_moves in
+        print_s [%message "blocking" (move : Position.t)];
+        move)
+      else (
+        let best_move = minimax ~me ~game_kind ~pieces in
+        match best_move with
+        | Some pos ->
+          print_s [%message "minimax" (pos : Position.t)];
+          pos
+        | None -> { Position.row = 6; column = 9 })))
 ;;
 
 let _ = pick_winning_move_or_block_if_possible_strategy

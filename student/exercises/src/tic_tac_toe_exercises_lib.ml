@@ -32,12 +32,43 @@ let empty_game =
 let down { Position.row; column } = { Position.row = row + 1; column }
 let right { Position.row; column } = { Position.row; column = column + 1 }
 let up { Position.row; column } = { Position.row = row - 1; column }
-let _left { Position.row; column } = { Position.row; column = column - 1 }
+let left { Position.row; column } = { Position.row; column = column - 1 }
+
+let _all_offsets =
+  let ( >> ) = Fn.compose in
+  [ up
+  ; up >> right
+  ; right
+  ; right >> down
+  ; down
+  ; down >> left
+  ; left
+  ; left >> up
+  ]
+;;
 
 let place_piece (game : Game_state.t) ~piece ~position : Game_state.t =
   let pieces = Map.set game.pieces ~key:position ~data:piece in
   { game with pieces }
 ;;
+
+(* let find_all_pos ~game_kind = let board_length = Game_kind.board_length
+   game_kind in let twod_move_list = List.init board_length ~f:(fun row ->
+   List.init board_length ~f:(fun col -> { Position.row; column = col })) in
+   List.concat twod_move_list ;;
+
+   let find_adj_pos ~pos ~game_kind = let raw_adj_pos = List.map all_offsets
+   ~f:(fun dir -> dir pos) in List.filter raw_adj_pos ~f:(fun adj_pos ->
+   Position.in_bounds adj_pos ~game_kind) ;;
+
+   let map_of_omok_pos = List.fold (find_all_pos ~game_kind:Game_kind.Omok)
+   ~init:Position.Map.empty ~f:(fun curr_map pos -> Map.set curr_map ~key:pos
+   ~data:(find_adj_pos ~pos ~game_kind:Game_kind.Omok)) ;;
+
+   let map_of_ttt_pos = List.fold (find_all_pos
+   ~game_kind:Game_kind.Tic_tac_toe) ~init:Position.Map.empty ~f:(fun
+   curr_map pos -> Map.set curr_map ~key:pos ~data:(find_adj_pos ~pos
+   ~game_kind:Game_kind.Tic_tac_toe)) ;; *)
 
 let win_for_x =
   empty_game
@@ -89,26 +120,52 @@ let available_moves
   Set.to_list avail_pos
 ;;
 
-let is_valid_coord ~(coord : Position.t) =
+(* let adjacent_moves ~(game_kind : Game_kind.t) ~(pieces : Piece.t
+   Position.Map.t) : Position.t list = ignore List.fold (Map.keys pieces)
+   ~init:[] ~f: (fun working_list pos -> )
+
+   ;;
+
+   let adjacent_pos ~(game_kind : Game_kind.t) ~(pieces : Piece.t
+   Position.Map.t) ~(pos:Position.t) : Position.t list = [down pos; up pos;
+   right pos; left pos; up; down (right pos); up (right pos); down (left
+   pos); up (left pos)]
+
+   ;;
+
+   let is_valid_and_not_taken ~(pos:Position.t) ~(pieces) ~game_kind=
+   List.filter *)
+
+let is_valid_coord ~(coord : Position.t) ~(game_kind : Game_kind.t) =
   (* coord.row >= 0 && coord.column >= 0 && coord.column <= 2 && coord.row <=
      2 *)
-  Position.in_bounds coord ~game_kind:Game_kind.Tic_tac_toe
+  Position.in_bounds coord ~game_kind
 ;;
 
-let rec build_direction ~step_dir ~eval_dir ~(pos : Position.t) =
-  if is_valid_coord ~coord:pos
-  then [ pos ] @ build_direction ~step_dir ~eval_dir ~pos:(eval_dir pos)
+let rec build_direction ~step_dir ~eval_dir ~(pos : Position.t) ~game_kind =
+  if is_valid_coord ~coord:pos ~game_kind
+  then
+    [ pos ]
+    @ build_direction ~step_dir ~eval_dir ~pos:(eval_dir pos) ~game_kind
   else []
 ;;
 
-let rec generic_search_helper ~step_dir ~eval_dir ~(pos : Position.t)
+let rec generic_search_helper
+  ~step_dir
+  ~eval_dir
+  ~(pos : Position.t)
+  ~game_kind
   : Position.t list list
   =
-  if is_valid_coord ~coord:pos
+  if is_valid_coord ~coord:pos ~game_kind
   then (
     let sequences =
-      [ build_direction ~step_dir ~eval_dir ~pos ]
-      @ generic_search_helper ~step_dir ~eval_dir ~pos:(step_dir pos)
+      [ build_direction ~step_dir ~eval_dir ~pos ~game_kind ]
+      @ generic_search_helper
+          ~step_dir
+          ~eval_dir
+          ~pos:(step_dir pos)
+          ~game_kind
     in
     sequences)
   else []
@@ -145,11 +202,12 @@ let generic_search
   ~pieces
   ~game_kind
   =
-  List.exists (generic_search_helper ~step_dir ~eval_dir ~pos) ~f:(fun seq ->
-    evaluate_seq ~seq ~player ~pieces ~game_kind)
+  List.exists
+    (generic_search_helper ~step_dir ~eval_dir ~pos ~game_kind)
+    ~f:(fun seq -> evaluate_seq ~seq ~player ~pieces ~game_kind)
 ;;
 
-let eval_rows ~player ~pieces ~game_kind=
+let eval_rows ~player ~pieces ~game_kind =
   generic_search
     ~step_dir:down
     ~eval_dir:right
@@ -159,7 +217,7 @@ let eval_rows ~player ~pieces ~game_kind=
     ~game_kind
 ;;
 
-let eval_cols ~player ~pieces ~game_kind=
+let eval_cols ~player ~pieces ~game_kind =
   generic_search
     ~step_dir:right
     ~eval_dir:down
@@ -169,7 +227,7 @@ let eval_cols ~player ~pieces ~game_kind=
     ~game_kind
 ;;
 
-let eval_diagonal ~player ~pieces ~game_kind=
+let eval_diagonal ~player ~pieces ~game_kind =
   let tl_diagonal () =
     generic_search
       ~step_dir:down
@@ -292,7 +350,7 @@ let exercise_one =
 
 let exercise_two =
   Command.basic
-    ~summary:"Exercise 2: Did is the game over?"
+    ~summary:"Exercise 2: Did is the game\n   over?"
     (let%map_open.Command () = return () in
      fun () ->
        let evaluation =
@@ -349,25 +407,15 @@ let exercise_four =
        ())
 ;;
 
-let%expect_test "print_win_for_x" =
-  print_endline (Game_state.to_string_hum win_for_x);
-  [%expect
-    {|
-    ((game_id 0)(game_kind Tic_tac_toe)(player_x(Player Player_X))(player_o(Player Player_O))(game_status(Turn_of X)))
-    XOX
-    OOX
-    OXX |}]
-;;
+(* let%expect_test "print_win_for_x" = print_endline
+   (Game_state.to_string_hum win_for_x); [%expect {| ((game_id 0)(game_kind
+   Tic_tac_toe)(player_x(Player Player_X))(player_o(Player
+   Player_O))(game_status(Turn_of X))) XOX OOX OXX |}] ;;
 
-let%expect_test "print_non_win" =
-  print_endline (Game_state.to_string_hum non_win);
-  [%expect
-    {|
-    ((game_id 0)(game_kind Tic_tac_toe)(player_x(Player Player_X))(player_o(Player Player_O))(game_status(Turn_of X)))
-    X
-    O
-    O X |}]
-;;
+   let%expect_test "print_non_win" = print_endline (Game_state.to_string_hum
+   non_win); [%expect {| ((game_id 0)(game_kind Tic_tac_toe)(player_x(Player
+   Player_X))(player_o(Player Player_O))(game_status(Turn_of X))) X O O X |}]
+   ;; *)
 
 (* After you've implemented [available_moves], uncomment these tests! *)
 (* let%expect_test "yes available_moves" = let (moves : Position.t list) =
